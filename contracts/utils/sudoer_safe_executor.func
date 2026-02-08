@@ -1,0 +1,9 @@
+#include "../stdlib.func";
+
+;; Placeholder implementation for build tooling.
+;; Replace with the audited SudoerExecutor logic before deployment.
+
+int main() {
+  ;; No-op entrypoint.
+  return 0;
+}

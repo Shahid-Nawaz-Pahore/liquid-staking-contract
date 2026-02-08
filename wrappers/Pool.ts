@@ -1,5 +1,8 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano, TupleBuilder, Dictionary, DictionaryValue, Message, storeMessage } from '@ton/core';
 
+// Minimal shape to type tuple items that wrap cells; avoids TS errors when running blueprint scripts.
+type TupleItemCell = { length: number; readCell(): Cell };
+
 import { PayoutCollection } from "./PayoutNFTCollection";
 import { Conf, Op, PoolState } from "../PoolConstants";
 
