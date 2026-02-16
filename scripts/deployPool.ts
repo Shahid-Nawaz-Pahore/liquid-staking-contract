@@ -1,5 +1,5 @@
 import { Address, Cell, toNano, beginCell } from '@ton/core';
-import { Pool, dataToFullConfig, poolFullConfigToCell } from '../wrappers/Pool';
+import { Pool, dataToFullConfig, poolFullConfigToCell, PoolFullConfig } from '../wrappers/Pool';
 import { PoolState } from "../PoolConstants";
 import { JettonMinter as DAOJettonMinter, jettonContentToCell } from '../contracts/jetton_dao/wrappers/JettonMinter';
 import { compile, NetworkProvider, sleep } from '@ton/blueprint';
