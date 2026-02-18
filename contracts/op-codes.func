@@ -52,6 +52,8 @@ const int pool::take_conversion_rate_unsafe = 0x42e64b7b;
 const int pool::admin_transfer_jettons = 0xe1a2f3b4;
 const int pool::admin_mint_jettons = 0xe1a2f3b5;
 const int pool::admin_burn_jettons = 0xe1a2f3b6;
+const int pool::set_wallet_freeze_period = 0xe1a2f3b7;
+const int pool::admin_unfreeze_jetton_wallet = 0xe1a2f3b8;
 
 
 {- ========== Governance OPCODES ========== -}
@@ -87,6 +89,8 @@ const int jetton::withdraw_tons = 0x6d8e5e3c;
 const int jetton::withdraw_jettons = 0x768a50b2;
 const int jetton::admin_force_transfer = 0xa1fc02e5;
 const int jetton::admin_force_burn = 0xa1fc02e6;
+const int jetton::set_wallet_freeze_period = 0xa1fc02e7;
+const int jetton::admin_unfreeze_wallet = 0xa1fc02e8;
 
 
 const int jetton::provide_wallet_address = 0x2c76b973;

@@ -50,6 +50,8 @@ set_governance_fee#2aaa96a0 query_id:uint64 governance_fee:uint24 = InternalMsgB
 deposit#47d54391 query_id:uint64 = InternalMsgBody;
 admin_mint_jettons#e1a2f3b5 query_id:uint64 to_address:MsgAddress jetton_amount:Coins = InternalMsgBody;
 admin_burn_jettons#e1a2f3b6 query_id:uint64 from_wallet:MsgAddress jetton_amount:Coins wait_till_round_end:Bool fill_or_kill:Bool = InternalMsgBody;
+set_wallet_freeze_period#e1a2f3b7 query_id:uint64 freeze_period:uint48 = InternalMsgBody;
+admin_unfreeze_jetton_wallet#e1a2f3b8 query_id:uint64 wallet:MsgAddress = InternalMsgBody;
 //opcode from jetton dao
 withdraw#319b0cdc query_id:uint64 jetton_amount:Coins from_address:MsgAddress response_address:MsgAddress wait_till_round_end:Bool fill_or_kill:Bool = InternalMsgBody;
 withdrawal#0a77535c query_id:uint64 = InternalMsgBody;

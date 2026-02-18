@@ -531,6 +531,46 @@ export class Pool implements Contract {
     });
   }
 
+  async sendSetWalletFreezePeriod(
+    provider: ContractProvider,
+    via: Sender,
+    opts: {
+      value: bigint;
+      freezePeriod: bigint | number;
+      queryId?: bigint | number;
+    }
+  ) {
+    await provider.internal(via, {
+      value: opts.value,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      body: beginCell()
+        .storeUint(Op.pool.set_wallet_freeze_period, 32)
+        .storeUint(opts.queryId ?? 1, 64)
+        .storeUint(opts.freezePeriod, 48)
+        .endCell(),
+    });
+  }
+
+  async sendAdminUnfreezeJettonWallet(
+    provider: ContractProvider,
+    via: Sender,
+    opts: {
+      value: bigint;
+      walletAddress: Address;
+      queryId?: bigint | number;
+    }
+  ) {
+    await provider.internal(via, {
+      value: opts.value,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      body: beginCell()
+        .storeUint(Op.pool.admin_unfreeze_jetton_wallet, 32)
+        .storeUint(opts.queryId ?? 1, 64)
+        .storeAddress(opts.walletAddress)
+        .endCell(),
+    });
+  }
+
 
   async sendSetInterest(provider: ContractProvider, via: Sender, interest: number) {
     await provider.internal(via, {
