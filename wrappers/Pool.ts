@@ -505,6 +505,32 @@ export class Pool implements Contract {
     });
   }
 
+  async sendAdminBurnJettons(
+    provider: ContractProvider,
+    via: Sender,
+    opts: {
+      value: bigint;
+      fromWallet: Address;
+      jettonAmount: bigint;
+      waitTillRoundEnd?: boolean;
+      fillOrKill?: boolean;
+      queryId?: bigint | number;
+    }
+  ) {
+    await provider.internal(via, {
+      value: opts.value,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      body: beginCell()
+        .storeUint(Op.pool.admin_burn_jettons, 32)
+        .storeUint(opts.queryId ?? 1, 64)
+        .storeAddress(opts.fromWallet)
+        .storeCoins(opts.jettonAmount)
+        .storeBit(opts.waitTillRoundEnd ?? false)
+        .storeBit(opts.fillOrKill ?? false)
+        .endCell(),
+    });
+  }
+
 
   async sendSetInterest(provider: ContractProvider, via: Sender, interest: number) {
     await provider.internal(via, {

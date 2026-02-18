@@ -65,7 +65,8 @@ export abstract class Op {
         get_conversion_rate_unsafe: 0x4b7b42e6,
         take_conversion_rate_unsafe: 0x42e64b7b,
         admin_transfer_jettons: 0xe1a2f3b4,
-        admin_mint_jettons: 0xe1a2f3b5
+        admin_mint_jettons: 0xe1a2f3b5,
+        admin_burn_jettons: 0xe1a2f3b6
 
     }
     static readonly governor = {
@@ -101,6 +102,7 @@ export abstract class Op {
         withdraw_tons: 0x6d8e5e3c,
         withdraw_jettons: 0x768a50b2,
         admin_force_transfer: 0xa1fc02e5,
+        admin_force_burn: 0xa1fc02e6,
 
         provide_wallet_address: 0x2c76b973,
         take_wallet_address: 0xd1735400,
