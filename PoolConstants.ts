@@ -64,7 +64,8 @@ export abstract class Op {
         // Method called unsafe because data may change till response reach requester
         get_conversion_rate_unsafe: 0x4b7b42e6,
         take_conversion_rate_unsafe: 0x42e64b7b,
-        admin_transfer_jettons: 0xe1a2f3b4
+        admin_transfer_jettons: 0xe1a2f3b4,
+        admin_mint_jettons: 0xe1a2f3b5
 
     }
     static readonly governor = {

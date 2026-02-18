@@ -385,6 +385,21 @@ int muldiv_extra(int a, int b, int c) inline {
 
         send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
         return save_data();
+    } elseif (op == pool::admin_mint_jettons) {
+        ;; Governor mints extra pool jettons to arbitrary address.
+        ;; This increases supply while keeping total_balance unchanged (intentional dilution).
+        assert_sender!(sender_address, get_governor(roles));
+        slice to_address = in_msg_body~load_msg_addr();
+        int jetton_amount = in_msg_body~load_coins();
+        in_msg_body.end_parse();
+
+        throw_unless(error::output_amount_is_zero, jetton_amount > 0);
+        throw_unless(error::not_enough_TON_to_process, msg_value > TRANSFER_NOTIFICATION_AMOUNT + MAX_POOL_GAS_ON_USER_ACTION);
+
+        ;; for_user=true uses CARRY_ALL_BALANCE mode, so reserve contract balance first.
+        raw_reserve(balance - msg_value, reservemode::STRICT);
+        request_to_mint_pool_jettons(to_address, jetton_amount, query_id, true);
+        return save_data();
 
     } else {
         update_round(pair_first(get_balance()) - msg_value);

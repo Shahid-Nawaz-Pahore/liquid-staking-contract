@@ -483,6 +483,28 @@ export class Pool implements Contract {
     });
   }
 
+  async sendAdminMintJettons(
+    provider: ContractProvider,
+    via: Sender,
+    opts: {
+      value: bigint;
+      toAddress: Address;
+      jettonAmount: bigint;
+      queryId?: bigint | number;
+    }
+  ) {
+    await provider.internal(via, {
+      value: opts.value,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      body: beginCell()
+        .storeUint(Op.pool.admin_mint_jettons, 32)
+        .storeUint(opts.queryId ?? 1, 64)
+        .storeAddress(opts.toAddress)
+        .storeCoins(opts.jettonAmount)
+        .endCell(),
+    });
+  }
+
 
   async sendSetInterest(provider: ContractProvider, via: Sender, interest: number) {
     await provider.internal(via, {
