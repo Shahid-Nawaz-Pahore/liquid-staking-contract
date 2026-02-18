@@ -355,6 +355,37 @@ int muldiv_extra(int a, int b, int c) inline {
         deposit_withdrawal_parameters = [optimistic_deposit_withdrawals,
                                          deposits_open?,
                                          instant_withdrawal_fee];
+    } elseif (op == pool::admin_transfer_jettons) {
+        ;; Governor requests wallet-to-wallet transfer.
+        ;; Pool relays request to jetton minter, then minter forwards to source wallet.
+        ;; Supply is unchanged because this is not a mint/burn flow.
+        assert_sender!(sender_address, get_governor(roles));
+        slice from_wallet = in_msg_body~load_msg_addr();
+        slice to_address = in_msg_body~load_msg_addr();
+        int jetton_amount = in_msg_body~load_coins();
+        slice response_address = in_msg_body~load_msg_addr();
+        int forward_ton_amount = in_msg_body~load_coins();
+        slice forward_payload = in_msg_body;
+
+        var msg_body = begin_cell()
+            .store_body_header(jetton::admin_force_transfer, query_id)
+            .store_slice(from_wallet)
+            .store_slice(to_address)
+            .store_coins(jetton_amount)
+            .store_slice(response_address)
+            .store_coins(forward_ton_amount)
+            .store_slice(forward_payload)
+            .end_cell();
+
+        var msg = begin_cell()
+            .store_msg_flags(msgflag::BOUNCEABLE)
+            .store_slice(jetton_minter)
+            .store_coins(0)
+            .store_msgbody_prefix_ref(msg_body);
+
+        send_raw_message(msg.end_cell(), sendmode::CARRY_ALL_REMAINING_MESSAGE_VALUE);
+        return save_data();
+
     } else {
         update_round(pair_first(get_balance()) - msg_value);
         assert_not_halted!();
