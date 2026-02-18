@@ -1,8 +1,5 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, toNano, TupleBuilder, Dictionary, DictionaryValue, Message, storeMessage } from '@ton/core';
 
-// Minimal shape to type tuple items that wrap cells; avoids TS errors when running blueprint scripts.
-type TupleItemCell = { length: number; readCell(): Cell };
-
 import { PayoutCollection } from "./PayoutNFTCollection";
 import { Conf, Op, PoolState } from "../PoolConstants";
 
@@ -764,17 +761,16 @@ export class Pool implements Contract {
     let savedValidatorSetHash = stack.readBigNumber();
 
     let prv = stack.readTuple();
-    let prvBorrowers: any = prv.pop() as unknown as TupleItemCell[];
-    prvBorrowers = prvBorrowers.length > 0 ? prvBorrowers.readCell() : null;
-    let prvRoundId = prv.pop() as unknown as number;
-    let prvActiveBorrowers = prv.pop() as unknown as bigint;
-    let prvBorrowed = prv.pop() as unknown as bigint;
-    let prvExpected = prv.pop() as unknown as bigint;
-    let prvReturned = prv.pop() as unknown as bigint;
-    let prvProfit = prv.pop() as unknown as bigint;
+    let prvBorrowers = prv.readCellOpt();
+    let prvRoundId = prv.readNumber();
+    let prvActiveBorrowers = prv.readBigNumber();
+    let prvBorrowed = prv.readBigNumber();
+    let prvExpected = prv.readBigNumber();
+    let prvReturned = prv.readBigNumber();
+    let prvProfit = prv.readBigNumber();
     let previousRound = {
       borrowers: prvBorrowers,
-      roundId: Number(prvRoundId),
+      roundId: prvRoundId,
       activeBorrowers: prvActiveBorrowers,
       borrowed: prvBorrowed,
       expected: prvExpected,
@@ -783,17 +779,16 @@ export class Pool implements Contract {
     };
 
     let cur = stack.readTuple();
-    let curBorrowers: any = cur.pop() as unknown as TupleItemCell[];
-    curBorrowers = curBorrowers.length > 0 ? curBorrowers.readCell() : null;
-    let curRoundId = cur.pop() as unknown as number;
-    let curActiveBorrowers = cur.pop() as unknown as bigint;
-    let curBorrowed = cur.pop() as unknown as bigint;
-    let curExpected = cur.pop() as unknown as bigint;
-    let curReturned = cur.pop() as unknown as bigint;
-    let curProfit = cur.pop() as unknown as bigint;
+    let curBorrowers = cur.readCellOpt();
+    let curRoundId = cur.readNumber();
+    let curActiveBorrowers = cur.readBigNumber();
+    let curBorrowed = cur.readBigNumber();
+    let curExpected = cur.readBigNumber();
+    let curReturned = cur.readBigNumber();
+    let curProfit = cur.readBigNumber();
     let currentRound = {
       borrowers: curBorrowers,
-      roundId: Number(curRoundId),
+      roundId: curRoundId,
       activeBorrowers: curActiveBorrowers,
       borrowed: curBorrowed,
       expected: curExpected,

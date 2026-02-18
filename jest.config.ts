@@ -4,7 +4,8 @@ const config: Config = {
     preset: 'ts-jest',
     testEnvironment: 'node',
     testMatch: ['<rootDir>/tests/*.spec.ts'],
-    testTimeout: 150000
+    testTimeout: 150000,
+    maxWorkers: 1
 };
 
 export default config;

@@ -3,7 +3,7 @@
     "version": "0.0.1",
     "license": "MIT",
     "scripts": {
-        "test": "jest --verbose --rootDir=./tests",
+        "test": "jest --verbose",
         "start": "blueprint run",
         "build": "blueprint build"
     },

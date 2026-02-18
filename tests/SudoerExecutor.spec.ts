@@ -72,7 +72,9 @@ describe('Executor', () => {
 
 });
 
-describe('should work on testnet pool', () => {
+const describeTestnet = process.env.RUN_TESTNET === '1' ? describe : describe.skip;
+
+describeTestnet('should work on testnet pool', () => {
 
     interface ActiveAccount { type: "active"; codeHash: string; dataHash: string; };
 

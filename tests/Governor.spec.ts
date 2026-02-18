@@ -244,7 +244,7 @@ describe('Governor actions tests', () => {
             });
         });
         describe('Roles update', () => {
-            let assertSetRoles :(txs: Transaction[], res: number, state?: Cell) => Promise<void>;
+            let assertSetRoles :(txs: BlockchainTransaction[], res: number, state?: Cell) => Promise<void>;
 
             beforeAll(async () => {
                 expect(newGovernor).not.toEqualAddress(deployer.address);
