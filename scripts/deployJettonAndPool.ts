@@ -32,6 +32,12 @@ export async function run(provider: NetworkProvider) {
     const governanceFee = await provider.ui().input("Please enter governance fee:");
     const minLoan = await provider.ui().input("Please enter min loan:");
     const maxLoan = await provider.ui().input("Please enter max loan:");
+    const freezePeriodInput = (await provider.ui().input("Please enter wallet freeze period in seconds (default 600):")).trim();
+    const freezePeriodRaw = freezePeriodInput || "600";
+    if (!/^\d+$/.test(freezePeriodRaw)) {
+        throw new Error("Freeze period must be a non-negative integer (seconds)");
+    }
+    const freezePeriodSeconds = BigInt(freezePeriodRaw);
 
     const confirmed = await provider.ui().prompt(`
         Deploy jetton with content url ${contentUrl}
@@ -40,6 +46,7 @@ export async function run(provider: NetworkProvider) {
         Governance fee ${governanceFee}
         Min loan ${minLoan} TON
         Max loan ${maxLoan} TON
+        Wallet freeze period ${freezePeriodSeconds} sec
     `);
     if (!confirmed) {
         return;
@@ -50,7 +57,8 @@ export async function run(provider: NetworkProvider) {
     const minter = DAOJettonMinter.createFromConfig({
         admin,
         content,
-        voting_code: dao_voting_code
+        voting_code: dao_voting_code,
+        wallet_freeze_period: freezePeriodSeconds,
     },
         dao_minter_code);
 

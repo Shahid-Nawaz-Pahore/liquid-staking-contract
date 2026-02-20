@@ -54,6 +54,7 @@ export async function run(provider: NetworkProvider) {
     let dao_wallet_code_raw = await compile('DAOJettonWallet');
     const dao_vote_keeper_code = await compile('DAOVoteKeeper');
     const dao_voting_code = await compile('DAOVoting');
+    const daoWalletFreezePeriodSeconds = 600n; // 10 minutes default
 
     let lib_prep = beginCell().storeUint(2,8).storeBuffer(dao_wallet_code_raw.hash()).endCell();
     const dao_wallet_code = new Cell({ exotic:true, bits: lib_prep.bits, refs:lib_prep.refs});
@@ -63,7 +64,8 @@ export async function run(provider: NetworkProvider) {
     const minter  = DAOJettonMinter.createFromConfig({
                                                   admin,
                                                   content,
-                                                  voting_code:dao_voting_code},
+                                                  voting_code:dao_voting_code,
+                                                  wallet_freeze_period: daoWalletFreezePeriodSeconds},
                                                   dao_minter_code);
     let poolFullConfig: PoolFullConfig = {
           state: PoolState.NORMAL as (0 | 1),
@@ -152,11 +154,11 @@ export async function run(provider: NetworkProvider) {
     await pool.sendSetDepositSettings(provider.sender(), toNano("1"), true, true);
     await waitForTransaction(provider, pool.address, "set optimistic deposit settings");
 
-    await pool.sendDeposit(provider.sender(), toNano("100"));
+    await pool.sendDeposit(provider.sender(), toNano("10"));
     await waitForTransaction(provider, pool.address, "optimistic deposit");
     await pool.sendDonate(provider.sender(), toNano("1")); //compensate round finalize fee
     await waitForTransaction(provider, pool.address, "donation");
-    await pool.sendDeposit(provider.sender(), toNano("100"));
+    await pool.sendDeposit(provider.sender(), toNano("10"));
     await waitForTransaction(provider, pool.address, "optimistic deposit 2");
 
     // For manual pool rotation
