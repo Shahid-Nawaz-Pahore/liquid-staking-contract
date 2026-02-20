@@ -1,0 +1,7 @@
+{
+"name": "Dirty Dream",
+"symbol": "DD",
+"decimals": 9,
+"image": "https://brown-sophisticated-galliform-885.mypinata.cloud/ipfs/bafybeifyj24cjw3hq5lhhateejomefu6fx7e44q7xw673vwmpikbmzooaq?pinataGatewayToken=WcBvwy4p_johkMIKc7l02v63-v2zgq1f1ckZfYW8GgPoTrUOMLwXYGi5e14-cX2V",
+"description": "This is the Modren Jetton contract, which is a standard for creating and managing fungible tokens on the TON blockchain. It includes features such as minting, burning, and transferring tokens, as well as querying token balances and total supply."
+}
