@@ -3,9 +3,28 @@ import { NetworkProvider } from '@ton/blueprint';
 import { JettonMinter as DAOJettonMinter } from '../contracts/jetton_dao/wrappers/JettonMinter';
 import { JettonWallet as PoolJettonWallet } from '../wrappers/JettonWallet';
 
-async function getPoolJettonMinterAddress(provider: NetworkProvider, poolAddress: Address): Promise<Address> {
+async function getPoolFullDataStack(provider: NetworkProvider, poolAddress: Address) {
     const contractProvider = provider.provider(poolAddress);
-    const { stack } = await contractProvider.get('get_pool_full_data', []);
+    try {
+        const { stack } = await contractProvider.get('get_pool_full_data_raw', []);
+        return stack;
+    } catch (rawErr) {
+        try {
+            const { stack } = await contractProvider.get('get_pool_full_data', []);
+            return stack;
+        } catch (fullErr) {
+            const rawMsg = rawErr instanceof Error ? rawErr.message : String(rawErr);
+            const fullMsg = fullErr instanceof Error ? fullErr.message : String(fullErr);
+            throw new Error(
+                `Failed to read pool data using get_pool_full_data_raw (${rawMsg}) and ` +
+                `get_pool_full_data (${fullMsg}). Check pool address and network.`
+            );
+        }
+    }
+}
+
+async function getPoolJettonMinterAddress(provider: NetworkProvider, poolAddress: Address): Promise<Address> {
+    const stack = await getPoolFullDataStack(provider, poolAddress);
     const newContractVersion = stack.remaining === 34;
 
     stack.readNumber(); // state

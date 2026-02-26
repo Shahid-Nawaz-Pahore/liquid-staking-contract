@@ -1,7 +1,8 @@
-import { Address, toNano } from '@ton/core';
+import { Address, fromNano, toNano } from '@ton/core';
 import { NetworkProvider } from '@ton/blueprint';
 import { Pool } from '../wrappers/Pool';
 import { JettonMinter as DAOJettonMinter } from '../contracts/jetton_dao/wrappers/JettonMinter';
+import { JettonWallet as PoolJettonWallet } from '../wrappers/JettonWallet';
 
 async function getPoolFullDataStack(provider: NetworkProvider, poolAddress: Address) {
     const contractProvider = provider.provider(poolAddress);
@@ -66,49 +67,73 @@ export async function run(provider: NetworkProvider) {
     }
 
     const poolAddress = Address.parse(await ui.input('Pool address:'));
-    const fromOwnerAddress = Address.parse(await ui.input('From owner wallet address:'));
-    const toOwnerAddress = Address.parse(await ui.input('To owner wallet address:'));
-    const jettonAmount = toNano(await ui.input('Jetton amount (e.g. 10.5):'));
-
+    const ownerAddress = Address.parse(await ui.input('Owner wallet address to burn from:'));
     const poolJettonMinterAddress = await getPoolJettonMinterAddress(provider, poolAddress);
     const poolJettonMinter = provider.open(DAOJettonMinter.createFromAddress(poolJettonMinterAddress));
-    const fromWallet = await poolJettonMinter.getWalletAddress(fromOwnerAddress);
-    const toWallet = await poolJettonMinter.getWalletAddress(toOwnerAddress);
+    const fromWallet = await poolJettonMinter.getWalletAddress(ownerAddress);
+    const wallet = provider.open(PoolJettonWallet.createFromAddress(fromWallet));
+    const walletData = await wallet.getDaoData();
 
-    // Optional params with sane defaults
-    const value = toNano((await ui.input('TON to attach for fees (default 0.3):')) || '0.3');
-    const forwardTonAmount = toNano((await ui.input('Forward TON amount to send with transfer (default 0):')) || '0');
-    const responseAddressInput = await ui.input('Response address (default = sender):');
-    const responseAddress = responseAddressInput ? Address.parse(responseAddressInput) : sender.address;
+    if (!walletData.masterAdderss.equals(poolJettonMinterAddress)) {
+        throw new Error(
+            `Wallet minter mismatch. Wallet belongs to ${walletData.masterAdderss.toString()}, ` +
+            `but pool minter is ${poolJettonMinterAddress.toString()}.`
+        );
+    }
+
+    const availableJettons = walletData.balance;
+    const totalJettons = walletData.balance + walletData.locked;
+    ui.write(`Computed owner jetton wallet: ${fromWallet.toString()}`);
+    ui.write(`Available jettons: ${fromNano(availableJettons)}`);
+    ui.write(`Locked jettons: ${fromNano(walletData.locked)}`);
+
+    if (availableJettons <= 0n) {
+        ui.write('No available jettons to burn from this wallet.');
+        return;
+    }
+
+    const amountInput = (await ui.input(`Jetton amount to burn (default ${fromNano(availableJettons)}):`)).trim();
+    const jettonAmount = amountInput === '' ? availableJettons : toNano(amountInput);
+    if (jettonAmount <= 0n) {
+        throw new Error('Burn amount must be positive');
+    }
+    if (jettonAmount > availableJettons) {
+        throw new Error('Burn amount exceeds available jetton balance');
+    }
+
+    const immediateInput = (await ui.input('Immediate withdraw payout if possible? (Y/n):')).trim().toLowerCase();
+    const immediate = immediateInput !== 'n';
+    const waitTillRoundEnd = !immediate;
+    const fillOrKill = immediate;
+
+    const value = toNano((await ui.input('TON to attach for burn tx (default 1.2):')).trim() || '1.2');
 
     ui.write(`\nSummary:
   Pool:      ${poolAddress}
   Minter:    ${poolJettonMinterAddress}
-  From own:  ${fromOwnerAddress}
+  Owner:     ${ownerAddress}
   From wal:  ${fromWallet}
-  To own:    ${toOwnerAddress}
-  To wal:    ${toWallet}
-  Amount:    ${jettonAmount}
+  Available: ${fromNano(availableJettons)} jettons
+  Total:     ${fromNano(totalJettons)} jettons
+  Amount:    ${fromNano(jettonAmount)} jettons
   Value:     ${value} nanoTON
-  Fwd TON:   ${forwardTonAmount}
-  Response:  ${responseAddress}\n`);
+  Wait end:  ${waitTillRoundEnd}
+  Fill/Kill: ${fillOrKill}\n`);
 
-    const confirmed = await ui.prompt('Proceed with admin transfer?');
+    const confirmed = await ui.prompt('Proceed with admin burn?');
     if (!confirmed) {
         ui.write('Aborted by user.');
         return;
     }
 
     const pool = provider.open(Pool.createFromAddress(poolAddress));
-
-    await pool.sendAdminTransferJettons(sender, {
+    await pool.sendAdminBurnJettons(sender, {
         value,
         fromWallet,
-        toAddress: toOwnerAddress,
         jettonAmount,
-        responseAddress,
-        forwardTonAmount,
+        waitTillRoundEnd,
+        fillOrKill,
     });
 
-    ui.write('Admin transfer message sent.');
+    ui.write('Admin burn message sent.');
 }
