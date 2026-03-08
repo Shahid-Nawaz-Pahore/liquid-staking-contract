@@ -25,7 +25,14 @@ async function getPoolFullDataStack(provider: NetworkProvider, poolAddress: Addr
 
 async function getPoolJettonMinterAddress(provider: NetworkProvider, poolAddress: Address): Promise<Address> {
     const stack = await getPoolFullDataStack(provider, poolAddress);
-    const newContractVersion = stack.remaining === 34;
+    const stackItems = stack.remaining;
+    if (stackItems < 30) {
+        throw new Error(`Unexpected get_pool_full_data stack layout: ${stackItems} items`);
+    }
+    const hasExtendedFields = stackItems >= 34;
+    if (!hasExtendedFields && stackItems !== 30) {
+        throw new Error(`Unsupported get_pool_full_data stack layout: ${stackItems} items`);
+    }
 
     stack.readNumber(); // state
     stack.readBoolean(); // halted
@@ -33,7 +40,7 @@ async function getPoolJettonMinterAddress(provider: NetworkProvider, poolAddress
     stack.readNumber(); // interest_rate
     stack.readBoolean(); // optimistic_deposit_withdrawals
     stack.readBoolean(); // deposits_open
-    if (newContractVersion) {
+    if (hasExtendedFields) {
         stack.readNumber(); // instant_withdrawal_fee
     }
     stack.readBigNumber(); // saved_validator_set_hash
@@ -42,7 +49,7 @@ async function getPoolJettonMinterAddress(provider: NetworkProvider, poolAddress
     stack.readBigNumber(); // min_loan
     stack.readBigNumber(); // max_loan
     stack.readNumber(); // governance_fee_share
-    if (newContractVersion) {
+    if (hasExtendedFields) {
         stack.readBigNumber(); // accrued_governance_fee
         stack.readNumber(); // disbalance_tolerance
         stack.readNumber(); // credit_start_prior_elections_end
@@ -60,8 +67,14 @@ export async function run(provider: NetworkProvider) {
     }
 
     const poolAddress = Address.parse(await ui.input('Pool address:'));
-    const ownerInput = (await ui.input(`Owner address (default ${sender.address.toString()}):`)).trim();
+    const ownerInput = (await ui.input(`Owner address (must match sender, default ${sender.address.toString()}):`)).trim();
     const ownerAddress = ownerInput ? Address.parse(ownerInput) : sender.address;
+    if (!ownerAddress.equals(sender.address)) {
+        throw new Error(
+            `Sender ${sender.address.toString()} does not match owner ${ownerAddress.toString()}. ` +
+            'Jetton burn must be sent by the wallet owner.'
+        );
+    }
 
     const poolJettonMinterAddress = await getPoolJettonMinterAddress(provider, poolAddress);
     const poolJettonMinter = provider.open(DAOJettonMinter.createFromAddress(poolJettonMinterAddress));
@@ -95,7 +108,12 @@ export async function run(provider: NetworkProvider) {
     const immediateInput = (await ui.input('Immediate withdraw? (Y/n):')).trim().toLowerCase();
     const immediate = immediateInput !== 'n';
     const waitTillRoundEnd = !immediate;
-    const fillOrKill = immediate;
+    let fillOrKill = false;
+    if (immediate) {
+        const fallbackInput = (await ui.input('If immediate is unavailable, fallback to round-end withdraw? (Y/n):')).trim().toLowerCase();
+        const fallbackToRoundEnd = fallbackInput !== 'n';
+        fillOrKill = !fallbackToRoundEnd;
+    }
 
     const responseInput = (await ui.input(`Response address (default ${ownerAddress.toString()}):`)).trim();
     const responseAddress = responseInput ? Address.parse(responseInput) : ownerAddress;

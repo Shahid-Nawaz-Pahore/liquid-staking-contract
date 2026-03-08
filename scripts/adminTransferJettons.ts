@@ -23,7 +23,10 @@ async function getPoolFullDataStack(provider: NetworkProvider, poolAddress: Addr
     }
 }
 
-async function getPoolJettonMinterAddress(provider: NetworkProvider, poolAddress: Address): Promise<Address> {
+async function getPoolGovernorAndMinter(
+    provider: NetworkProvider,
+    poolAddress: Address
+): Promise<{ governor: Address; poolJettonMinter: Address }> {
     const stack = await getPoolFullDataStack(provider, poolAddress);
     const stackItems = stack.remaining;
     if (stackItems < 30) {
@@ -55,7 +58,16 @@ async function getPoolJettonMinterAddress(provider: NetworkProvider, poolAddress
         stack.readNumber(); // credit_start_prior_elections_end
     }
 
-    return stack.readAddress(); // jetton_minter
+    const poolJettonMinter = stack.readAddress();
+    stack.readBigNumber(); // poolJettonSupply
+    stack.readAddressOpt(); // depositPayout
+    stack.readBigNumber(); // requested_for_deposit
+    stack.readAddressOpt(); // withdrawalPayout
+    stack.readBigNumber(); // requested_for_withdrawal
+    stack.readAddress(); // sudoer
+    stack.readNumber(); // sudoer_set_at
+    const governor = stack.readAddress();
+    return { governor, poolJettonMinter };
 }
 
 export async function run(provider: NetworkProvider) {
@@ -66,12 +78,26 @@ export async function run(provider: NetworkProvider) {
     }
 
     const poolAddress = Address.parse(await ui.input('Pool address:'));
-    const fromOwnerAddress = Address.parse(await ui.input('From owner wallet address:'));
-    const toOwnerAddress = Address.parse(await ui.input('To owner wallet address:'));
-    const jettonAmount = toNano(await ui.input('Jetton amount (e.g. 10.5):'));
+    const { governor, poolJettonMinter: poolJettonMinterAddress } = await getPoolGovernorAndMinter(provider, poolAddress);
+    if (!sender.address.equals(governor)) {
+        throw new Error(
+            `Sender ${sender.address.toString()} is not governor ${governor.toString()}. ` +
+            'Only governor can call admin transfer via pool.'
+        );
+    }
 
-    const poolJettonMinterAddress = await getPoolJettonMinterAddress(provider, poolAddress);
     const poolJettonMinter = provider.open(DAOJettonMinter.createFromAddress(poolJettonMinterAddress));
+    const minterData = await poolJettonMinter.getJettonData();
+    if (!minterData.adminAddress.equals(poolAddress)) {
+        throw new Error(
+            `Minter admin is ${minterData.adminAddress.toString()}, expected pool ${poolAddress.toString()}. ` +
+            'Set minter admin to pool first, otherwise pool->minter admin ops are rejected.'
+        );
+    }
+
+    const fromOwnerAddress = Address.parse(await ui.input('From owner address:'));
+    const toOwnerAddress = Address.parse(await ui.input('To owner address:'));
+    const jettonAmount = toNano(await ui.input('Jetton amount (e.g. 10.5):'));
     const fromWallet = await poolJettonMinter.getWalletAddress(fromOwnerAddress);
     const toWallet = await poolJettonMinter.getWalletAddress(toOwnerAddress);
 
@@ -84,6 +110,8 @@ export async function run(provider: NetworkProvider) {
     ui.write(`\nSummary:
   Pool:      ${poolAddress}
   Minter:    ${poolJettonMinterAddress}
+  Governor:  ${governor}
+  Minter admin: ${minterData.adminAddress}
   From own:  ${fromOwnerAddress}
   From wal:  ${fromWallet}
   To own:    ${toOwnerAddress}

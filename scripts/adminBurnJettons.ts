@@ -67,7 +67,7 @@ export async function run(provider: NetworkProvider) {
     }
 
     const poolAddress = Address.parse(await ui.input('Pool address:'));
-    const ownerAddress = Address.parse(await ui.input('Owner wallet address to burn from:'));
+    const ownerAddress = Address.parse(await ui.input('Owner address to burn from:'));
     const poolJettonMinterAddress = await getPoolJettonMinterAddress(provider, poolAddress);
     const poolJettonMinter = provider.open(DAOJettonMinter.createFromAddress(poolJettonMinterAddress));
     const fromWallet = await poolJettonMinter.getWalletAddress(ownerAddress);
@@ -104,7 +104,12 @@ export async function run(provider: NetworkProvider) {
     const immediateInput = (await ui.input('Immediate withdraw payout if possible? (Y/n):')).trim().toLowerCase();
     const immediate = immediateInput !== 'n';
     const waitTillRoundEnd = !immediate;
-    const fillOrKill = immediate;
+    let fillOrKill = false;
+    if (immediate) {
+        const fallbackInput = (await ui.input('If immediate is unavailable, fallback to round-end withdraw? (Y/n):')).trim().toLowerCase();
+        const fallbackToRoundEnd = fallbackInput !== 'n';
+        fillOrKill = !fallbackToRoundEnd;
+    }
 
     const value = toNano((await ui.input('TON to attach for burn tx (default 1.2):')).trim() || '1.2');
 
