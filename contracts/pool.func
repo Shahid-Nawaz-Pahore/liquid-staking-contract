@@ -202,8 +202,17 @@ int muldiv_extra(int a, int b, int c) inline {
         ;; after that point we should not revert because jettons should not be lost
         try {
             throw_unless(error::not_enough_TON_to_process, msg_value > WITHDRAWAL_FEE);
-            int request_immediate_withdrawal_if_possible = ~ in_msg_body~load_bool();
-            int fill_or_kill = in_msg_body~load_bool();
+            ;; Backward-compatibility: custom payload with withdraw flags is optional.
+            ;; Defaults when absent: immediate withdrawal allowed, not fill-or-kill.
+            int wait_till_round_end = false;
+            int fill_or_kill = false;
+            if (in_msg_body.slice_bits()) {
+                wait_till_round_end = in_msg_body~load_bool();
+            }
+            if (in_msg_body.slice_bits()) {
+                fill_or_kill = in_msg_body~load_bool();
+            }
+            int request_immediate_withdrawal_if_possible = ~ wait_till_round_end;
             in_msg_body.end_parse();
             update_round(pair_first(get_balance()) - msg_value);
             assert_not_halted!(); ;; otherwise mint back
