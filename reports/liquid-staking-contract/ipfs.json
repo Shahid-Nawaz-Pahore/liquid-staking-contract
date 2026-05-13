@@ -1,0 +1,7 @@
+{
+    "name": "awaited_modren_jetton",
+    "symbol": "",
+    "decimals": 9,
+    "image": "https://ipfs.io/ipfs/bafkreidvledbiorby25jhafhakpj6ab72aepfzg2u3fu5hm6iexfrszvki",
+    "description": "This is the Modren Jetton contract, which is a standard for creating and managing fungible tokens on the TON blockchain. It includes features such as minting, burning, and transferring tokens, as well as querying token balances and total supply."
+}

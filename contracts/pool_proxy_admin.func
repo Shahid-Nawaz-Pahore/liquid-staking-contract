@@ -1,0 +1,231 @@
+{-
+  Pool Proxy Admin Layer
+  
+  The Pool contract acts as a proxy for Jetton Minter admin operations.
+  All operations require governor authorization and maintain supply consistency.
+  
+  Features:
+  - admin_mint: Mint tokens to any wallet with supply tracking
+  - admin_burn: Burn tokens from any wallet with supply tracking
+  - admin_transfer: Transfer tokens between wallets (no supply change)
+  - freeze_wallet: Freeze a wallet
+  - unfreeze_wallet: Unfreeze a wallet
+  - set_freeze_period: Set the default freeze period
+  
+  All operations forward messages to the Jetton Minter and handle bounces properly.
+-}
+
+;; Opcodes from awaited minter
+const int op::awaited_mint = 0x1674b0a0;
+const int op::awaited_admin_burn = 0x5e6f7a8b;
+const int op::awaited_admin_transfer = 0x1a2b3c4d;
+const int op::awaited_freeze_wallet = 0x12345678;
+const int op::awaited_unfreeze_wallet = 0x87654321;
+const int op::awaited_set_freeze_period = 0x22222222;
+
+const int ADMIN_OPERATION_GAS = ONE_TON / 10; ;; 0.1 TON for admin operations
+
+;; Handle admin_mint: Pool mints tokens to any address
+;; This increases supply atomically with minter state
+() handle_admin_mint(slice sender_address, slice in_msg_body, int query_id) impure inline {
+    assert_sender!(sender_address, governor);
+    
+    ;; Parse mint parameters
+    slice to_address = in_msg_body~load_msg_addr();
+    int jetton_amount = in_msg_body~load_coins();
+    int forward_ton_amount = in_msg_body~load_coins();
+    int total_ton_amount = in_msg_body~load_coins();
+    
+    ;; Validate parameters
+    throw_unless(error::invalid_amount, jetton_amount > 0);
+    throw_unless(error::invalid_amount, total_ton_amount > forward_ton_amount);
+    
+    ;; Optimistically increase supply BEFORE sending to minter
+    ;; If minter bounces, we'll revert in on_bounce handler
+    supply += jetton_amount;
+    
+    ;; Forward mint message to Jetton Minter
+    ;; Message format matches awaited minter's op::mint expectation
+    var msg_body = begin_cell()
+            .store_uint(op::awaited_mint, 32)
+            .store_uint(query_id, 64)
+            .store_slice(to_address)
+            .store_coins(jetton_amount)
+            .store_coins(forward_ton_amount)
+            .store_coins(total_ton_amount)
+            .end_cell();
+    
+    var msg = begin_cell()
+            .store_msg_flags(msgflag::BOUNCEABLE)
+            .store_slice(jetton_minter)
+            .store_coins(total_ton_amount + ADMIN_OPERATION_GAS)
+            .store_msgbody_prefix_ref(msg_body);
+    
+    send_raw_message(msg.end_cell(), sendmode::PAY_FEES_SEPARETELY);
+}
+
+;; Handle admin_burn: Pool burns tokens from any wallet
+;; This decreases supply when burn succeeds
+() handle_admin_burn(slice sender_address, slice in_msg_body, int query_id) impure inline {
+    assert_sender!(sender_address, governor);
+    
+    ;; Parse burn parameters
+    slice from_address = in_msg_body~load_msg_addr();
+    int jetton_amount = in_msg_body~load_coins();
+    int forward_ton_amount = in_msg_body~load_coins();
+    
+    ;; Validate parameters
+    throw_unless(error::invalid_amount, jetton_amount > 0);
+    throw_unless(error::not_enough_jettons, supply >= jetton_amount);
+    
+    ;; DON'T decrease supply here - wait for burn_notification from minter
+    ;; The minter will send burn_notification which triggers pool::withdraw handler
+    ;; That handler already decreases supply and handles the burn
+    
+    ;; Forward admin_burn message to Jetton Minter
+    var msg_body = begin_cell()
+            .store_uint(op::awaited_admin_burn, 32)
+            .store_uint(query_id, 64)
+            .store_slice(from_address)
+            .store_coins(jetton_amount)
+            .store_coins(forward_ton_amount)
+            .end_cell();
+    
+    var msg = begin_cell()
+            .store_msg_flags(msgflag::BOUNCEABLE)
+            .store_slice(jetton_minter)
+            .store_coins(ADMIN_OPERATION_GAS)
+            .store_msgbody_prefix_ref(msg_body);
+    
+    send_raw_message(msg.end_cell(), sendmode::PAY_FEES_SEPARETELY);
+}
+
+;; Handle admin_transfer: Pool transfers tokens between wallets
+;; No supply change as tokens just move between wallets
+() handle_admin_transfer(slice sender_address, slice in_msg_body, int query_id) impure inline {
+    assert_sender!(sender_address, governor);
+    
+    ;; Parse transfer parameters
+    slice from_address = in_msg_body~load_msg_addr();
+    slice to_address = in_msg_body~load_msg_addr();
+    int jetton_amount = in_msg_body~load_coins();
+    int forward_ton_amount = in_msg_body~load_coins();
+    
+    ;; Validate parameters
+    throw_unless(error::invalid_amount, jetton_amount > 0);
+    
+    ;; No supply change - tokens are just moving between wallets
+    
+    ;; Forward admin_transfer message to Jetton Minter
+    var msg_body = begin_cell()
+            .store_uint(op::awaited_admin_transfer, 32)
+            .store_uint(query_id, 64)
+            .store_slice(from_address)
+            .store_slice(to_address)
+            .store_coins(jetton_amount)
+            .store_coins(forward_ton_amount)
+            .store_uint(0, 1) ;; no forward_payload
+            .end_cell();
+    
+    var msg = begin_cell()
+            .store_msg_flags(msgflag::BOUNCEABLE)
+            .store_slice(jetton_minter)
+            .store_coins(ADMIN_OPERATION_GAS)
+            .store_msgbody_prefix_ref(msg_body);
+    
+    send_raw_message(msg.end_cell(), sendmode::PAY_FEES_SEPARETELY);
+}
+
+;; Handle freeze_wallet: Freeze a specific wallet
+() handle_freeze_wallet(slice sender_address, slice in_msg_body, int query_id) impure inline {
+    assert_sender!(sender_address, governor);
+    
+    ;; Parse freeze parameters
+    slice wallet_address = in_msg_body~load_msg_addr();
+    
+    ;; Forward freeze_wallet message to Jetton Minter
+    var msg_body = begin_cell()
+            .store_uint(op::awaited_freeze_wallet, 32)
+            .store_uint(query_id, 64)
+            .store_slice(wallet_address)
+            .end_cell();
+    
+    var msg = begin_cell()
+            .store_msg_flags(msgflag::BOUNCEABLE)
+            .store_slice(jetton_minter)
+            .store_coins(ADMIN_OPERATION_GAS)
+            .store_msgbody_prefix_ref(msg_body);
+    
+    send_raw_message(msg.end_cell(), sendmode::PAY_FEES_SEPARETELY);
+}
+
+;; Handle unfreeze_wallet: Unfreeze a specific wallet
+() handle_unfreeze_wallet(slice sender_address, slice in_msg_body, int query_id) impure inline {
+    assert_sender!(sender_address, governor);
+    
+    ;; Parse unfreeze parameters
+    slice wallet_address = in_msg_body~load_msg_addr();
+    
+    ;; Forward unfreeze_wallet message to Jetton Minter
+    var msg_body = begin_cell()
+            .store_uint(op::awaited_unfreeze_wallet, 32)
+            .store_uint(query_id, 64)
+            .store_slice(wallet_address)
+            .end_cell();
+    
+    var msg = begin_cell()
+            .store_msg_flags(msgflag::BOUNCEABLE)
+            .store_slice(jetton_minter)
+            .store_coins(ADMIN_OPERATION_GAS)
+            .store_msgbody_prefix_ref(msg_body);
+    
+    send_raw_message(msg.end_cell(), sendmode::PAY_FEES_SEPARETELY);
+}
+
+;; Handle set_freeze_period: Set the default freeze period
+() handle_set_freeze_period(slice sender_address, slice in_msg_body, int query_id) impure inline {
+    assert_sender!(sender_address, governor);
+    
+    ;; Parse freeze period (in seconds) - must be >= 0 per minter requirements
+    int new_period = in_msg_body~load_int(64);
+    throw_unless(error::invalid_freeze_period, new_period >= 0);
+    
+    ;; Forward set_freeze_period message to Jetton Minter
+    var msg_body = begin_cell()
+            .store_uint(op::awaited_set_freeze_period, 32)
+            .store_uint(query_id, 64)
+            .store_int(new_period, 64)
+            .end_cell();
+    
+    var msg = begin_cell()
+            .store_msg_flags(msgflag::BOUNCEABLE)
+            .store_slice(jetton_minter)
+            .store_coins(ADMIN_OPERATION_GAS)
+            .store_msgbody_prefix_ref(msg_body);
+    
+    send_raw_message(msg.end_cell(), sendmode::PAY_FEES_SEPARETELY);
+}
+
+;; Enhanced bounce handler for admin operations
+;; This reverts supply changes if mint operation bounces
+() handle_admin_bounce(slice in_msg_body) impure inline {
+    in_msg_body~skip_bounce();
+    int op = in_msg_body~load_uint(32);
+    
+    if (op == op::awaited_mint) {
+        ;; Mint bounced - revert supply increase
+        int query_id = in_msg_body~load_uint(64);
+        slice to_address = in_msg_body~load_msg_addr();
+        int jetton_amount = in_msg_body~load_coins();
+        
+        ;; Revert the optimistic supply increase
+        supply -= jetton_amount;
+        
+        ;; Log the failed mint for monitoring
+        ;; In production, you'd want to emit an event or notification
+    }
+    ;; For other operations (burn, transfer, freeze), bounces are less critical
+    ;; as they don't affect supply directly (burn waits for confirmation,
+    ;; transfer doesn't change supply, freeze is idempotent)
+}
+

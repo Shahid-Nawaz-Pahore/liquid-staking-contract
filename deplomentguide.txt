@@ -1,0 +1,27 @@
+            Deployment Guide
+
+Step1: Deploy modern jetton Contract   
+     npx blueprint build --all
+     npx blueprint test       
+     npx blueprint run deployJettonMinter --testnet
+Step2: Deploy Pool contract   
+    npx blueprint build --all          
+    npx blueprint run deploy_pool_con --testnet
+Step3: Change Admin of modern jetton Contract             
+    npx blueprint run quick_transfer_admin  --testnet
+
+    
+
+check pool is pause or unpause
+     npx blueprint run check_status --testnet
+Pause the pool:
+    npx blueprint run pause_pool --testnet 
+UnPause the pool:
+    npx blueprint run unpause_pool --testnet 
+
+Change Min-Stake
+
+1. get Min stake value:
+    npx blueprint run get_min_stake
+2. set Min stake value:
+    npx blueprint run set_min_stake

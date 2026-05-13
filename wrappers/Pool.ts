@@ -824,6 +824,15 @@ export class Pool implements Contract {
     return { min: res.minLoan, max: res.maxLoan };
   }
 
+  async calculateLoanAmount(provider: ContractProvider, minLoan: bigint, maxLoan: bigint, maxInterest: number) {
+    const args = new TupleBuilder();
+    args.writeNumber(minLoan);
+    args.writeNumber(maxLoan);
+    args.writeNumber(maxInterest);
+    const { stack } = await provider.get('calculate_loan_amount', args.build());
+    return stack.readBigNumber();
+  }
+
 
   async getControllerAddress(provider: ContractProvider, id: number, validator: Address) {
     const { stack } = await provider.get('get_controller_address', [

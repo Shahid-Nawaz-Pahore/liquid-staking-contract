@@ -1,0 +1,27 @@
+{
+    "name": "liquid_staking",
+    "version": "0.0.1",
+    "license": "MIT",
+    "scripts": {
+        "test": "jest",
+        "pool:pause": "blueprint run pause_pool",
+        "pool:unpause": "blueprint run unpause_pool", 
+        "pool:status": "blueprint run check_status",
+        "pool:help": "blueprint run pool_manager help",
+        "pool:manager": "blueprint run pool_manager"
+    },
+    "devDependencies": {
+        "@ton-community/blueprint": "^0.12.0",
+        "@ton-community/sandbox": "^0.11.0",
+        "@ton-community/test-utils": "^0.2.0",
+        "@types/jest": "^29.2.6",
+        "@types/node": "^20.0.0",
+        "jest": "^29.3.1",
+        "prettier": "^2.8.3",
+        "ton-core": "^0.53.0",
+        "ton-crypto": "^3.2.0",
+        "ts-jest": "^29.0.5",
+        "ts-node": "^10.9.1",
+        "typescript": "^5.0.4"
+    }
+}

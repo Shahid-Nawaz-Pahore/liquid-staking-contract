@@ -15,6 +15,7 @@ export async function run(provider: NetworkProvider) {
     if (!confirmed) {
         return;
     }
+    
 
     const sender = provider.sender();
     const pool = provider.open(Pool.createFromAddress(poolAddress));
